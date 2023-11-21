@@ -143,10 +143,10 @@ void loop()
 
   OmniDrive(target_x, target_y, target_yaw);
 
-  // unsigned long TIMER = micros() - prevtime;
-  // while (TIMER < control_period)
-  // {
-  //   TIMER = micros() - prevtime;
-  // }
-  // prevtime = micros();
+  unsigned long TIMER = micros() - prevtime;
+  while (TIMER < control_period)
+  {
+    TIMER = micros() - prevtime;
+  }
+  prevtime = micros();
 }
