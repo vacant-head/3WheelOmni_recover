@@ -110,28 +110,6 @@ void setup()
 
 void loop()
 {
-  // MDの動作確認   3秒正転,1秒フリー,3秒逆転，1秒フリー
-  // Serial.printf("start_cw\n");
-  // double testduty = 0.1;
-  // delay(500);
-  // motorDrive(motor1, testduty);
-  // motorDrive(motor2, testduty);
-  // motorDrive(motor3, testduty);
-  // delay(3000);
-  // Serial.printf("switch_ccw\n");
-  // motorFree(motor1);
-  // delay(500);
-
-  // Serial.printf("start_ccw\n");
-  // testduty = -0.5;
-  // delay(500);
-  // motorDrive(motor1, testduty);
-  // motorDrive(motor2, testduty);
-  // motorDrive(motor3, testduty);
-  // delay(3000);
-  // Serial.printf("switch_cw\n");
-  // delay(500);
-
   ps4_x_raw = PS4.LStickX();
   target_x = map(ps4_x_raw, -128, 128, -1.0, 1.0);
   ps4_y_raw = PS4.LStickY();
