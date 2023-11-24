@@ -88,7 +88,8 @@ void motorStop(int motornum[])
 // コントローラの値からオムニ行列を計算し，モーター出力
 void OmniDrive(double ps4x, double ps4y, double ps4yaw)
 {
-  double omniArray[3][3] = {{1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
+  double omniArray[3][3] = {{0.0, 1.0, 1.0}, {-0.8660254, -0.5, 1.0}, {0.8660254, -0.5, 1.0}};
+  //double omniArray[3][3] = {{1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
   double duty_calc[3] = {0, 0, 0};
   // double duty_motor1=0,duty_motor2=0,duty_motor1 =0;
 
