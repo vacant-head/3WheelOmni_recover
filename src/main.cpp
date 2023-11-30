@@ -88,11 +88,10 @@ void motorStop(int motornum[])
 // コントローラの値からオムニ行列を計算し，モーター出力
 void OmniDrive(double ps4x, double ps4y, double ps4yaw)
 {
-  double omniArray[3][3] = {{0.0, 1.0, 1.0}, {-0.8660254, -0.5, 1.0}, {0.8660254, -0.5, 1.0}};
-  //double omniArray[3][3] = {{1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
+  // double omniArray[3][3] = {{0.0, 1.0, 1.0}, {-0.8660254, -0.5, 1.0}, {0.8660254, -0.5, 1.0}};
+  //double omniArray[3][3] = {{-1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
+  double omniArray[3][3] = {{1.0, -0.0, 1.0}, {-0.5, 0.8660254, 1.0}, {-0.5, -0.8660254, 1.0}};
   double duty_calc[3] = {0, 0, 0};
-  // double duty_motor1=0,duty_motor2=0,duty_motor1 =0;
-
   for (int i = 0; i < 3; i++) // dutyの計算
   {
     duty_calc[i] = omniArray[i][0] * ps4x + omniArray[i][1] * ps4y + omniArray[i][2] * ps4yaw;
@@ -124,16 +123,17 @@ void loop()
   if (PS4.isConnected()) // PS4に接続済のとき
   {
     ps4_x_raw = PS4.LStickX();
-    command_x = ((double)ps4_x_raw - (-128.0)) * (1.0 - (-1.0)) / (128 - (-128)) + (-1.0);
+    // command_x = ((double)ps4_x_raw - (-128.0)) * (1.0 - (-1.0)) / (128 - (-128)) + (-1.0);
+    command_x = (double)ps4_x_raw / 128.0;
     ps4_y_raw = PS4.LStickY();
-    command_y = (double)ps4_y_raw /128.0;
+    command_y = (double)ps4_y_raw / 128.0;
     ps4_yaw_raw = PS4.RStickX();
-    command_yaw = (double)ps4_yaw_raw /128.0;
+    command_yaw = (double)ps4_yaw_raw / 128.0;
     Serial.printf("vx=%d,vy=%d,vyaw=%d\r\n", ps4_x_raw, ps4_y_raw, ps4_yaw_raw);
     Serial.printf("vxc=%lf,vyc=%lf,vyawc=%lf\r\n", command_x, command_y, command_yaw);
 
     OmniDrive(command_x, command_y, command_yaw);
-    //delay(500);
+    // delay(500);
   }
   else // 未接続の場合，モーターはフリー回転する
   {
@@ -149,9 +149,4 @@ void loop()
     TIMER = micros() - prevtime;
   }
   prevtime = micros();
-}
-
-long map(long x, long in_min, long in_max, long out_min, long out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
