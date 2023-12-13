@@ -29,9 +29,9 @@ const int dirPin3_2 = 27;
 const int channel_motor3 = 3;
 uint8_t pwmResolution = 8;
 
-int motor1[4] = {pwmPin1, dirPin1_1, dirPin1_2, channel_motor1}; // 1番モーター
-int motor2[4] = {pwmPin2, dirPin2_1, dirPin2_2, channel_motor2}; // 2番モーター
-int motor3[4] = {pwmPin3, dirPin3_1, dirPin3_2, channel_motor3}; // 3番モーター
+int motor1[5] = {pwmPin1, dirPin1_1, dirPin1_2, channel_motor1, -1}; // 1番モーター
+int motor2[5] = {pwmPin2, dirPin2_1, dirPin2_2, channel_motor2, -1}; // 2番モーター
+int motor3[5] = {pwmPin3, dirPin3_1, dirPin3_2, channel_motor3, -1}; // 3番モーター
 
 // ps4の入力を速度の指令値に変換
 double command_x = 0;
@@ -39,14 +39,14 @@ double command_y = 0;
 double command_yaw = 0;
 
 // モーターのセットアップmotornum[4] = {pwmPin, dirPin1, dirPin2, channel}
-void motorSetup(int motornum[], int freq) // motornum[4] = {pwmPin, dirPin1, dirPin2, channel}
+void motorSetup(int motornum[], int freq) // motornum[5] = {pwmPin, dirPin1, dirPin2, channel, default_dir}
 {
   pinMode(motornum[0], OUTPUT); // pwm
   pinMode(motornum[1], OUTPUT); // IN1
   pinMode(motornum[2], OUTPUT); // IN2
   ledcSetup(motornum[3], freq, pwmResolution);
   ledcAttachPin(motornum[0], motornum[3]);
-  Serial.printf("setup\n");
+  // Serial.printf("setup\n");
 }
 
 // ps4の値
@@ -55,9 +55,9 @@ int ps4_y_raw;   // 左スティック縦方向
 int ps4_yaw_raw; // 右スティック横
 
 // モーター駆動用関数
-// void motorDrive(int channel_motor, int IN1, int IN2, double duty)
 void motorDrive(int Drive_motornum[], double duty)
 {
+  duty = duty * Drive_motornum[4];
   bool dir = duty > 0; // 方向
   double DUTY = pow(2, pwmResolution) * abs(duty);
   bool dutycheck = DUTY < 257;
@@ -70,7 +70,9 @@ void motorDrive(int Drive_motornum[], double duty)
     Serial.printf("DUTY=%lf", DUTY);
     break;
   case 0:
+    ledcWrite(Drive_motornum[3], 0); // duty = 0を出力
     Serial.printf("DUTYerr=%lf\n", DUTY);
+    break;
   }
 }
 
@@ -125,14 +127,36 @@ void loop()
 {
   if (PS4.isConnected()) // PS4に接続済のとき
   {
-    ps4_x_raw = PS4.LStickX();
-    command_x = (double)ps4_x_raw / 128.0;
-    ps4_y_raw = PS4.LStickY();
-    command_y = (double)ps4_y_raw / 128.0;
-    ps4_yaw_raw = PS4.RStickX();
-    command_yaw = (double)ps4_yaw_raw / 128.0;
-    Serial.printf("vx=%d,vy=%d,vyaw=%d\r\n", ps4_x_raw, ps4_y_raw, ps4_yaw_raw);
-    Serial.printf("vxc=%lf,vyc=%lf,vyawc=%lf\r\n", command_x, command_y, command_yaw);
+    //-trimval<=0<=trimvalの値を0にしてる
+    // スティックの値を -1 <= stick <= 1 の範囲に変更
+    double trimval = 10.0;
+    if (PS4.LStickX() > trimval || PS4.LStickX() < (-1 * trimval))
+    {
+      command_x = (double)PS4.LStickX() / (128.0 - trimval);
+    }
+    else
+    {
+      command_x = 0;
+    }
+    if (PS4.LStickY() > trimval || PS4.LStickY() < -1 * trimval)
+    {
+      command_y = (double)PS4.LStickY() / (128.0 - trimval);
+    }
+    else
+    {
+      command_y = 0;
+    }
+    if (PS4.RStickX() > trimval || PS4.RStickX() < (-1 * trimval))
+    {
+      command_yaw = (double)PS4.RStickX() / (128.0 - trimval);
+    }
+    else
+    {
+      command_yaw = 0;
+    }
+
+    // Serial.printf("vx=%d,vy=%d,vyaw=%d\r\n", PS4.LStickX(), PS4.LStickY(), PS4.RStickX());
+    Serial.printf("X=%lf,Y=%lf,YAW=%lf\r\n", command_x, command_y, command_yaw);
 
     OmniDrive(command_x, command_y, command_yaw);
     // delay(500);
