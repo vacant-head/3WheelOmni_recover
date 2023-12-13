@@ -3,11 +3,16 @@
 #include <PS4Controller.h>
 #include <esp_bt_defs.h>
 #include <esp_bt_main.h>
-// #include <ESP32Motor.hpp>
+#include <MPU6050.h>
+
 // 制御周期系の設定
 const int control_period = 2000;                         // us
 const float control_freq = 1.0f / (float)control_period; // Hz
 unsigned long prevtime = 0;                              // us
+
+// ジャイロセンサ
+const uint8_t gyro_SCL = 22;
+const uint8_t gyro_SDA = 23;
 
 // モーターまわりのピン宣言
 const uint8_t pwmPin1 = 4;
@@ -88,8 +93,6 @@ void motorStop(int motornum[])
 // コントローラの値からオムニ行列を計算し，モーター出力
 void OmniDrive(double ps4x, double ps4y, double ps4yaw)
 {
-  // double omniArray[3][3] = {{0.0, 1.0, 1.0}, {-0.8660254, -0.5, 1.0}, {0.8660254, -0.5, 1.0}};
-  //double omniArray[3][3] = {{-1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
   double omniArray[3][3] = {{1.0, -0.0, 1.0}, {-0.5, 0.8660254, 1.0}, {-0.5, -0.8660254, 1.0}};
   double duty_calc[3] = {0, 0, 0};
   for (int i = 0; i < 3; i++) // dutyの計算
@@ -123,7 +126,6 @@ void loop()
   if (PS4.isConnected()) // PS4に接続済のとき
   {
     ps4_x_raw = PS4.LStickX();
-    // command_x = ((double)ps4_x_raw - (-128.0)) * (1.0 - (-1.0)) / (128 - (-128)) + (-1.0);
     command_x = (double)ps4_x_raw / 128.0;
     ps4_y_raw = PS4.LStickY();
     command_y = (double)ps4_y_raw / 128.0;
