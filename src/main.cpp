@@ -95,7 +95,7 @@ void motorStop(int motornum[])
 // コントローラの値からオムニ行列を計算し，モーター出力
 void OmniDrive(double ps4x, double ps4y, double ps4yaw)
 {
-  double omniArray[3][3] = {{1.0, -0.0, 1.0}, {-0.5, 0.8660254, 1.0}, {-0.5, -0.8660254, 1.0}};
+  double omniArray[3][3] = {{-1.0, 0.0, 1.0}, {0.5, -0.8660254, 1.0}, {0.5, 0.8660254, 1.0}};
   double duty_calc[3] = {0, 0, 0};
   for (int i = 0; i < 3; i++) // dutyの計算
   {
@@ -148,7 +148,7 @@ void loop()
     }
     if (PS4.RStickX() > trimval || PS4.RStickX() < (-1 * trimval))
     {
-      command_yaw = (double)PS4.RStickX() / (128.0 - trimval);
+      command_yaw = -1 * (double)PS4.RStickX() / (128.0 - trimval);
     }
     else
     {
