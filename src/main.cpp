@@ -3,7 +3,8 @@
 #include <PS4Controller.h>
 #include <esp_bt_defs.h>
 #include <esp_bt_main.h>
-#include <MPU6050.h>
+#include <Wire.h>
+#include <MPU6050_6Axis_MotionApps20.h>
 
 // 制御周期系の設定
 const int control_period = 2000;                         // us
@@ -38,6 +39,65 @@ double command_x = 0;
 double command_y = 0;
 double command_yaw = 0;
 
+// ジャイロセンサ
+#define Gyro_X -1529
+#define Gyro_Y -981
+#define Gyro_Z -131
+#define Accel_Z -1458
+
+MPU6050 mpu;
+static uint8_t mpuIntStatus;
+static bool dmpReady = false;  // set true if DMP init was successful
+static uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+
+int16_t  Gyro_Now = 0, Gyro = 0, Gyro_Offset = 0;
+uint16_t fifoCount;
+uint8_t fifoBuffer[64]; // FIFO storage buffer                 // orientation/motion vars
+Quaternion q;           // [w, x, y, z]         quaternion container
+VectorFloat gravity;    // [x, y, z]            gravity vector
+float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+
+void GyroGet() {
+  mpuIntStatus = false;
+  mpuIntStatus = mpu.getIntStatus();
+  fifoCount = mpu.getFIFOCount();
+  if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+    mpu.resetFIFO();
+  }
+  else if (mpuIntStatus & 0x02) {
+    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+    mpu.getFIFOBytes(fifoBuffer, packetSize);
+    fifoCount -= packetSize;
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    Gyro_Now = degrees(ypr[0]) + 180;
+    Gyro = Gyro_Now + Gyro_Offset;
+    if (Gyro < 0) Gyro += 360;
+    if (Gyro > 359) Gyro -= 360;
+  }
+}
+
+void Gryo_Start() {
+  mpu.initialize();
+  if (mpu.testConnection() != true) {
+    Serial.println("MPU disconection");
+    while (true) {}
+  }
+  if (mpu.dmpInitialize() != 0) {
+    Serial.println("MPU break");
+    while (true) {}
+  }
+  mpu.setXGyroOffset(Gyro_X);
+  mpu.setYGyroOffset(Gyro_Y);
+  mpu.setZGyroOffset(Gyro_Z);
+  mpu.setZAccelOffset(Accel_Z);
+  mpu.setDMPEnabled(true);
+  mpuIntStatus = mpu.getIntStatus();
+  dmpReady = true;
+  packetSize = mpu.dmpGetFIFOPacketSize();
+}
+
 // モーターのセットアップmotornum[4] = {pwmPin, dirPin1, dirPin2, channel}
 void motorSetup(int motornum[], int freq) // motornum[5] = {pwmPin, dirPin1, dirPin2, channel, default_dir}
 {
@@ -67,11 +127,11 @@ void motorDrive(int Drive_motornum[], double duty)
     digitalWrite(Drive_motornum[1], dir);  // 方向信号1
     digitalWrite(Drive_motornum[2], !dir); // 方向信号2
     ledcWrite(Drive_motornum[3], DUTY);    // pwm出力
-    Serial.printf("DUTY=%lf", DUTY);
+    //Serial.printf("DUTY=%lf", DUTY);
     break;
   case 0:
     ledcWrite(Drive_motornum[3], 0); // duty = 0を出力
-    Serial.printf("DUTYerr=%lf\n", DUTY);
+    //Serial.printf("DUTYerr=%lf\n", DUTY);
     break;
   }
 }
@@ -105,22 +165,24 @@ void OmniDrive(double ps4x, double ps4y, double ps4yaw)
   motorDrive(motor1, duty_calc[0]);
   motorDrive(motor2, duty_calc[1]);
   motorDrive(motor3, duty_calc[2]);
-  Serial.printf("\r\n");
+  //Serial.printf("\r\n");
 }
 
 void setup()
 {
   Serial.begin(115200);
   PS4.begin("0C:B8:15:C1:3C:66");
+  Wire.begin();
+  Gryo_Start();
 
   // モーターのピン設定
   int ledcfreq = 2000; // ledcWriteの周波数設定
   motorSetup(motor1, ledcfreq);
-  Serial.printf("motor1Setup\r\n");
+  //Serial.printf("motor1Setup\r\n");
   motorSetup(motor2, ledcfreq);
-  Serial.printf("motor2Setup\r\n");
+  //Serial.printf("motor2Setup\r\n");
   motorSetup(motor3, ledcfreq);
-  Serial.printf("motor3Setup\r\n");
+  //Serial.printf("motor3Setup\r\n");
 }
 
 void loop()
@@ -130,36 +192,28 @@ void loop()
     //-trimval<=0<=trimvalの値を0にしてる
     // スティックの値を -1 <= stick <= 1 の範囲に変更
     double trimval = 10.0;
-    if (PS4.LStickX() > trimval || PS4.LStickX() < (-1 * trimval))
+    if (PS4.LStickX() > trimval || PS4.LStickX() < (-1 * trimval)) //x軸の速度
     {
       command_x = (double)PS4.LStickX() / (128.0 - trimval);
     }
-    else
-    {
-      command_x = 0;
-    }
-    if (PS4.LStickY() > trimval || PS4.LStickY() < -1 * trimval)
+    else{command_x = 0;}
+    if (PS4.LStickY() > trimval || PS4.LStickY() < -1 * trimval) // y軸の速度
     {
       command_y = (double)PS4.LStickY() / (128.0 - trimval);
     }
-    else
-    {
-      command_y = 0;
-    }
-    if (PS4.RStickX() > trimval || PS4.RStickX() < (-1 * trimval))
+    else{command_y = 0;}
+    if (PS4.RStickX() > trimval || PS4.RStickX() < (-1 * trimval)) // yaw軸の速度
     {
       command_yaw = -1 * (double)PS4.RStickX() / (128.0 - trimval);
     }
-    else
-    {
-      command_yaw = 0;
-    }
+    else{command_yaw = 0;}
 
     // Serial.printf("vx=%d,vy=%d,vyaw=%d\r\n", PS4.LStickX(), PS4.LStickY(), PS4.RStickX());
-    Serial.printf("X=%lf,Y=%lf,YAW=%lf\r\n", command_x, command_y, command_yaw);
+    // Serial.printf("X=%lf,Y=%lf,YAW=%lf\r\n", command_x, command_y, command_yaw);
 
     OmniDrive(command_x, command_y, command_yaw);
-    // delay(500);
+    GyroGet();
+    Serial.println(Gyro);
   }
   else // 未接続の場合，モーターはフリー回転する
   {
