@@ -73,8 +73,8 @@ void GyroGet() {
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
     Gyro_Now = degrees(ypr[0]) + 180;
     Gyro = Gyro_Now + Gyro_Offset;
-    if (Gyro < 0) Gyro += 360;
-    if (Gyro > 359) Gyro -= 360;
+    if (Gyro < 0) Gyro += 3600;
+    if (Gyro > 3599) Gyro -= 3600;
   }
 }
 
@@ -209,19 +209,21 @@ void loop()
     else{command_yaw = 0;}
 
     // Serial.printf("vx=%d,vy=%d,vyaw=%d\r\n", PS4.LStickX(), PS4.LStickY(), PS4.RStickX());
-    // Serial.printf("X=%lf,Y=%lf,YAW=%lf\r\n", command_x, command_y, command_yaw);
+    Serial.printf("X=%lf,Y=%lf,YAW=%lf\r\n", command_x, command_y, command_yaw);
 
     OmniDrive(command_x, command_y, command_yaw);
-    GyroGet();
-    Serial.println(Gyro);
+
   }
   else // 未接続の場合，モーターはフリー回転する
   {
-    Serial.println("PS4NotConnected");
+    //Serial.println("PS4NotConnected");
     motorFree(motor1);
     motorFree(motor2);
     motorFree(motor3);
   }
+
+  GyroGet();
+  Serial.println(Gyro);
 
   unsigned long TIMER = micros() - prevtime;
   while (TIMER < control_period)
